@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wildfire Report</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .report-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .detection-preview {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .detection-image {
+            max-width: 100%;
+            height: 400px;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .report-form {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--dark-bg);
+            font-size: 0.95rem;
+        }
+
+        .form-input {
+            padding: 0.8rem;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.1);
+            outline: none;
+        }
+
+        .form-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        .btn-secondary {
+            background-color: #666;
+        }
+
+        .btn-secondary:hover {
+            background-color: #555;
+        }
+
+        .geolocation-help {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">🔥 Wildfire Alert</h1>
+        </div>
+    </nav>
+
+    <div class="report-container">
+        <h2 class="section-title">Submit Wildfire Report</h2>
+        
+        <div class="detection-preview">
+            <img src="{{ '/' + image_path }}" alt="Detected Fire" class="detection-image">
+        </div>
+
+        <form action="{{ url_for('submit_report') }}" method="post" class="report-form" id="reportForm">
+            <input type="hidden" name="image_path" value="{{ image_path }}">
+
+            <div class="form-group">
+                <label class="form-label" for="severity">Severity Level</label>
+                <select name="severity" id="severity" class="form-input" required>
+                    <option value="">Select severity</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="location">Coordinates</label>
+                <input type="text" id="location" name="location" class="form-input" required>
+                <div class="geolocation-help">Automatically detected using your device's location</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="event_time">Event Time</label>
+                <input type="datetime-local" name="event_time" id="event_time" 
+                       value="{{ default_time }}" class="form-input" required>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="retryFalsePositive()">
+                    False Positive
+                </button>
+                <button type="submit" class="btn" id="submitBtn">
+                    Submit Report
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        // Enhanced Geolocation with error handling
+        function getLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject('Geolocation is not supported by your browser');
+                } else {
+                    navigator.geolocation.getCurrentPosition(
+                        position => resolve(position),
+                        error => reject(error.message)
+                    );
+                }
+            });
+        }
+
+        async function autoFillLocation() {
+            try {
+                const position = await getLocation();
+                const lat = position.coords.latitude.toFixed(6);
+                const lon = position.coords.longitude.toFixed(6);
+                document.getElementById('location').value = `${lat}, ${lon}`;
+            } catch (error) {
+                console.error('Geolocation error:', error);
+                document.querySelector('.geolocation-help').textContent = 
+                    'Location detection failed: ' + error;
+            }
+        }
+
+        // Form submission handler
+        document.getElementById('reportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('#submitBtn');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+
+            // Show loading state
+            submitBtn.disabled = true;
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                // Add artificial delay for demo
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                form.submit();
+            } catch (error) {
+                console.error('Submission error:', error);
+                alert('Failed to submit report. Please try again.');
+                submitBtn.disabled = false;
+                loadingOverlay.style.display = 'none';
+            }
+        });
+
+        // Enhanced retry function
+        async function retryFalsePositive() {
+            if (!confirm('Are you sure this is a false positive? This action cannot be undone.')) return;
+
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                const response = await fetch('/retry', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `image_path=${encodeURIComponent("{{ image_path }}")}`
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                alert(`Retry failed: ${error.message}`);
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        // Initialize page
+        window.addEventListener('DOMContentLoaded', () => {
+            autoFillLocation();
+            document.getElementById('event_time').focus();
+        });
+    </script>
+</body>
+</html>

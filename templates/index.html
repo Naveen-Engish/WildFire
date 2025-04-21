@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wildfire Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --primary: #ff4d4d;
+            --secondary: #ff9f43;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+            --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f6fa;
+            color: var(--dark);
+            min-height: 100vh;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: var(--gradient);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            color: white;
+            margin: 0;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+        }
+
+        .auth-links {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .welcome {
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn {
+            background: white;
+            color: var(--primary);
+            padding: 0.5rem 1.25rem;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        main {
+            padding: 2rem 0;
+        }
+
+        .video-section {
+            margin: 2rem 0 3rem;
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            color: var(--dark);
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title::before {
+            content: "";
+            display: block;
+            width: 8px;
+            height: 24px;
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        .video-frame {
+            position: relative;
+            padding-bottom: 56.25%;
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--dark);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .live-feed {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.5s ease;
+        }
+
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .report-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.25rem;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
+        }
+
+        .report-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            padding-bottom: 2px;
+        }
+
+        .delete-btn:hover {
+            background: #e63939;
+            transform: scale(1.1);
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 0.3rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .severity-high { background: #ff6b6b; color: white; }
+        .severity-medium { background: #ffd93d; color: var(--dark); }
+        .severity-low { background: #6c5ce7; color: white; }
+
+        .report-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .report-details {
+            margin-bottom: 1rem;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+            padding: 0.6rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #7f8c8d;
+        }
+
+        .detail-value {
+            text-align: right;
+            color: var(--dark);
+        }
+
+        .report-thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-top: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .report-thumbnail:hover {
+            transform: scale(1.02);
+        }
+
+        #toggleCamera {
+            background: var(--secondary);
+            color: white;
+            padding: 0.6rem 1.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        #toggleCamera:hover {
+            background: #ff8f1a;
+            transform: translateY(-2px);
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+
+        .loading {
+            position: relative;
+            pointer-events: none;
+            padding-right: 2.5rem !important;
+        }
+
+        .loading::after {
+            content: "";
+            position: absolute;
+            right: 1rem;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1rem;
+            }
+            
+            .navbar .container {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+            
+            .auth-links {
+                justify-content: flex-end;
+            }
+            
+            .video-section {
+                padding: 1.5rem;
+            }
+            
+            .reports-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">🔥 Wildfire Alert</h1>
+            <div class="auth-links">
+                {% if username %}
+                    <span class="welcome">Welcome, {{ username }}</span>
+                    <a href="{{ url_for('logout') }}" class="btn">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="btn">Login / Sign up</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <button id="toggleCamera" class="btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 5px;">
+                <path d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2V5z"/>
+            </svg>
+            Turn Camera Off
+        </button>
+        
+        <section class="video-section">
+            <h2 class="section-title">Live Detection Feed</h2>
+            <div class="video-frame">
+                <img src="{{ url_for('video_feed') }}" class="live-feed">
+            </div>
+        </section>
+
+        <section class="reports-section">
+            <h2 class="section-title">Recent Alerts</h2>
+            <div class="reports-grid">
+                {% for id, severity, location, event_time, image_path, submitted_at in reports %}
+                    <div class="report-card">
+                        {% if username %}
+                            <button class="delete-btn" onclick="deleteReport({{ id }})" title="Delete Report">&times;</button>
+                        {% endif %}
+                        <div class="report-content">
+                            <div class="severity-badge severity-{{ severity|lower }}">{{ severity }}</div>
+                            <div class="report-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Location</span>
+                                    <span class="detail-value">{{ location }}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Event Time</span>
+                                    <span class="detail-value">{{ event_time }}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Reported</span>
+                                    <span class="detail-value">{{ submitted_at }}</span>
+                                </div>
+                            </div>
+                            <img src="{{ '/' + image_path }}" class="report-thumbnail" alt="Wildfire detection image">
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="empty-state">No active alerts 🎉</div>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Camera Toggle with Loading State
+            const toggleCamera = document.getElementById('toggleCamera');
+            let isCameraToggling = false;
+            let isCameraOn = true;
+
+            toggleCamera.addEventListener('click', async () => {
+                if (isCameraToggling) return;
+                
+                isCameraToggling = true;
+                toggleCamera.classList.add('loading');
+                
+                try {
+                    const res = await fetch('/toggle_camera', { method: 'POST' });
+                    const data = await res.json();
+                    
+                    isCameraOn = data.camera_enabled;
+                    updateCameraUI();
+                    
+                } catch (error) {
+                    console.error('Camera toggle error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        text: 'Failed to toggle camera. Please try again.',
+                    });
+                } finally {
+                    toggleCamera.classList.remove('loading');
+                    isCameraToggling = false;
+                }
+            });
+
+            function updateCameraUI() {
+                const liveFeed = document.querySelector('.live-feed');
+                const cameraIcon = toggleCamera.querySelector('svg path');
+                
+                // Smooth transition
+                liveFeed.style.opacity = 0;
+                
+                setTimeout(() => {
+                    liveFeed.src = isCameraOn 
+                        ? "{{ url_for('video_feed') }}" 
+                        : "{{ url_for('static', filename='placeholder.jpg') }}";
+                    liveFeed.style.opacity = 1;
+                    
+                    // Update button text and icon
+                    toggleCamera.innerHTML = isCameraOn 
+                        ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 5px;">
+                              <path d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2V5z"/>
+                           </svg>
+                           Turn Camera Off`
+                        : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 5px;">
+                              <path d="M10.961 12.365a1.99 1.99 0 0 0 .522-1.103l3.11 1.382A1 1 0 0 0 16 11.731V4.269a1 1 0 0 0-1.406-.913l-3.111 1.382A2 2 0 0 0 9.5 3H2a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h7.5a1.99 1.99 0 0 0 1.461-.635z"/>
+                              <path d="M8 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/>
+                           </svg>
+                           Turn Camera On`;
+                }, 300);
+            }
+
+            // Report card interactions
+            document.querySelectorAll('.report-card').forEach(card => {
+                card.style.cursor = 'pointer';
+                
+                card.addEventListener('click', (e) => {
+                    // Only zoom if not clicking delete button
+                    if (!e.target.classList.contains('delete-btn')) {
+                        const img = card.querySelector('.report-thumbnail');
+                        
+                        Swal.fire({
+                            imageUrl: img.src,
+                            imageAlt: 'Wildfire detection image',
+                            showConfirmButton: false,
+                            background: 'rgba(0,0,0,0.8)',
+                            backdrop: 'rgba(0,0,0,0.7)',
+                            width: '80%',
+                            padding: '0'
+                        });
+                    }
+                });
+            });
+
+            // Detection Check with Debounce
+            let isCheckingDetection = false;
+            
+            setInterval(async () => {
+                if (isCheckingDetection || !isCameraOn) return;
+                
+                isCheckingDetection = true;
+                
+                try {
+                    const res = await fetch('/check_detection');
+                    const data = await res.json();
+                    
+                    if (data.detected) {
+                        // Show detection alert before redirecting
+                        const { isConfirmed } = await Swal.fire({
+                            title: 'Wildfire Detected!',
+                            text: 'A potential wildfire has been detected in the live feed.',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#ff4d4d',
+                            cancelButtonColor: '#95a5a6',
+                            confirmButtonText: 'View Details',
+                            cancelButtonText: 'Dismiss'
+                        });
+                        
+                        if (isConfirmed) {
+                            window.location.href = '/report?image=' + encodeURIComponent(data.image);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Detection check failed:', error);
+                } finally {
+                    isCheckingDetection = false;
+                }
+            }, 1000);
+        });
+
+        // Enhanced Delete Confirmation
+        function deleteReport(reportId) {
+            Swal.fire({
+                title: 'Delete this report?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ff4d4d',
+                cancelButtonColor: '#95a5a6',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('/delete_report', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: `report_id=${reportId}`
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) {
+                            Swal.fire(
+                                'Deleted!',
+                                'The report has been deleted.',
+                                'success'
+                            ).then(() => location.reload());
+                        } else {
+                            Swal.fire(
+                                'Error!',
+                                'Failed to delete report. Please try again.',
+                                'error'
+                            );
+                        }
+                    }).catch(error => {
+                        console.error('Delete error:', error);
+                        Swal.fire(
+                            'Error!',
+                            'An error occurred while deleting the report.',
+                            'error'
+                        );
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>
